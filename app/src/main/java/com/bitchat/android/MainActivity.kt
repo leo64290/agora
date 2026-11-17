@@ -316,8 +316,8 @@ class MainActivity : OrientationAwareActivity() {
                 // Set up back navigation handling for the chat screen
                 val backCallback = object : OnBackPressedCallback(true) {
                     override fun handleOnBackPressed() {
-                        // Let ChatViewModel handle navigation state
-                        val handled = chatViewModel.handleBackPressed()
+                        // AGORA first (pages, tabs, chat), then ChatViewModel navigation state
+                        val handled = com.bitchat.android.agora.ui.AgoraNav.handleBack { chatViewModel.handleBackPressed() }
                         if (!handled) {
                             // If ChatViewModel doesn't handle it, disable this callback
                             // and let the system handle it (which will exit the app)
@@ -330,7 +330,8 @@ class MainActivity : OrientationAwareActivity() {
 
                 // Add the callback - this will be automatically removed when the activity is destroyed
                 onBackPressedDispatcher.addCallback(this, backCallback)
-                ChatScreen(viewModel = chatViewModel)
+                // AGORA: the game is the home screen; the BitChat chat stays one tap away
+                com.bitchat.android.agora.ui.AgoraRoot(chatViewModel)
             }
             
             OnboardingState.ERROR -> {

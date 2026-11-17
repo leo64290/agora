@@ -1422,6 +1422,7 @@ class ChatViewModel(
 
     private suspend fun performPanicClearAllData() {
         Log.w(TAG, "🚨 PANIC MODE ACTIVATED - Clearing all sensitive data")
+        try { com.bitchat.android.agora.AgoraHub.panic() } catch (_: Exception) { }
         try {
             com.bitchat.android.geohash.LocationChannelManager
                 .getInstance(getApplication())

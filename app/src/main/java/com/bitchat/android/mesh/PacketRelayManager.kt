@@ -173,6 +173,8 @@ class PacketRelayManager(private val myPeerID: String) {
     private fun relayPacket(routed: RoutedPacket) {
         Log.d(TAG, "🔄 Relaying packet type ${routed.packet.type} with TTL ${routed.packet.ttl}")
         delegate?.broadcastPacket(routed)
+        // AGORA "Relais" points: count every packet we forward for others (game or plain BitChat)
+        try { com.bitchat.android.agora.AgoraHub.noteRelayed(routed.packet.type) } catch (_: Exception) { }
     }
     
     /**

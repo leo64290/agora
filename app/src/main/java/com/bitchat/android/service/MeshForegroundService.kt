@@ -345,11 +345,8 @@ class MeshForegroundService : Service() {
 
     private fun startForegroundCompat(notification: Notification) {
         if (Build.VERSION.SDK_INT >= 34) {
-            val type = if (hasLocationPermission()) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-            } else {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-            }
+            // AGORA: connectedDevice only (the location FGS type was removed from the manifest)
+            val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
             try {
                 startForeground(NOTIFICATION_ID, notification, type)
             } catch (e: SecurityException) {

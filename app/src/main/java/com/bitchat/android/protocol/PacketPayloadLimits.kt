@@ -64,6 +64,7 @@ internal object PacketPayloadLimits {
             MessageType.FRAGMENT -> return FRAGMENT_BYTES
             MessageType.ANNOUNCE, MessageType.LEAVE, MessageType.NOISE_HANDSHAKE,
             MessageType.VOICE_FRAME -> return CONTROL_BYTES
+            MessageType.AGORA -> return 16 * 1024
             null -> Unit
         }
         return when (type) {

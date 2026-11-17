@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -33,11 +34,11 @@ android {
     if (releaseUiTests) testBuildType = "release"
 
     defaultConfig {
-        applicationId = "com.bitchat.droid"
+        applicationId = "com.agora.manif"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 42
-        versionName = "2.2.0"
+        versionCode = 1
+        versionName = "1.0.0"
         buildConfigField(
             "String",
             "GITHUB_RELEASE_CERT_SHA256",
@@ -67,6 +68,18 @@ android {
         sourceSets.getByName("androidTest").kotlin.directories.add("src/composerAndroidTest/java")
     }
 
+    // AGORA: upload key for Google Play, read from keystore.properties (never committed)
+    val agoraKeystore = rootProject.file("keystore.properties")
+    if (agoraKeystore.exists()) {
+        val props = Properties().apply { agoraKeystore.inputStream().use { stream -> load(stream) } }
+        signingConfigs.create("agoraUpload") {
+            storeFile = rootProject.file(props.getProperty("storeFile"))
+            storePassword = props.getProperty("storePassword")
+            keyAlias = props.getProperty("keyAlias")
+            keyPassword = props.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         debug {
             if (composerUiTests) applicationIdSuffix = ".composerTest"
@@ -76,6 +89,7 @@ android {
             }
         }
         release {
+            signingConfigs.findByName("agoraUpload")?.let { signingConfig = it }
             if (releaseUiTests) {
                 signingConfig = signingConfigs.getByName("debug")
                 proguardFiles("release-instrumentation.pro")
@@ -140,7 +154,7 @@ composeCompiler {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(17)
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_11)
     }

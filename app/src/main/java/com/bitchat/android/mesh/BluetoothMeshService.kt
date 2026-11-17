@@ -616,6 +616,15 @@ class BluetoothMeshService(private val context: Context) : TransportBridgeServic
 
             override fun handleVoiceFrame(routed: RoutedPacket): Boolean =
                 messageHandler.handlePublicVoiceFrame(routed)
+
+            override fun handleAgora(routed: RoutedPacket): Boolean {
+                val sender = routed.peerID ?: return false
+                // The packet signature was already checked against this peer's announced signing key.
+                val key = peerManager.getPeerInfo(sender)?.signingPublicKey
+                val player = if (key != null) com.bitchat.android.agora.AgoraIds.fromSigningKey(key) else sender
+                com.bitchat.android.agora.AgoraHub.onIncoming(player, routed.packet.payload)
+                return true
+            }
             
             override suspend fun handleLeave(routed: RoutedPacket) {
                 messageHandler.handleLeave(routed)
@@ -687,6 +696,8 @@ class BluetoothMeshService(private val context: Context) : TransportBridgeServic
                     Log.i(TAG, "Device connected: ${device.address}")
                     delay(200)
                     sendBroadcastAnnounce()
+                    // AGORA: send our ideas/votes to the newcomer once our announce has arrived
+                    com.bitchat.android.agora.AgoraHub.onPeerConnected()
                 }
                 // Verbose debug: device connected
                 try {
@@ -771,6 +782,15 @@ class BluetoothMeshService(private val context: Context) : TransportBridgeServic
         }
         
         Log.i(TAG, "Starting Bluetooth mesh service with peer ID: $myPeerID")
+
+        // AGORA: the game rides on this mesh. Player id = hash of our signing key (stable, anonymous).
+        try {
+            val signingKey = encryptionService.getSigningPublicKey()
+            val agoraId = if (signingKey != null) com.bitchat.android.agora.AgoraIds.fromSigningKey(signingKey) else myPeerID
+            com.bitchat.android.agora.AgoraHub.attach(context, agoraId, { sendAgora(it) }, { peerManager.getActivePeerCount() })
+        } catch (e: Exception) {
+            Log.w(TAG, "AGORA attach failed: ${e.message}")
+        }
         
         if (connectionManager.startServices()) {
             isActive = true
@@ -875,6 +895,26 @@ class BluetoothMeshService(private val context: Context) : TransportBridgeServic
             broadcastRoutedPacket(RoutedPacket(signedPacket))
             // Track our own broadcast message for sync
             try { gossipSyncManager.onPublicPacketSeen(signedPacket) } catch (_: Exception) { }
+        }
+    }
+
+    /**
+     * AGORA: broadcast one game message (type 0x41), signed like a public message.
+     */
+    fun sendAgora(payload: ByteArray) {
+        if (payload.isEmpty()) return
+        serviceScope.launch {
+            val packet = BitchatPacket(
+                version = if (payload.size > 0xFFFF) 2u else 1u,
+                type = MessageType.AGORA.value,
+                senderID = hexStringToByteArray(myPeerID),
+                recipientID = SpecialRecipients.BROADCAST,
+                timestamp = System.currentTimeMillis().toULong(),
+                payload = payload,
+                signature = null,
+                ttl = MAX_TTL
+            )
+            broadcastRoutedPacket(RoutedPacket(signPacketBeforeBroadcast(packet)))
         }
     }
 
